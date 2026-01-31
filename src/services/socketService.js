@@ -7,7 +7,7 @@ import Constants from 'expo-constants';
 // ---------------------------------------------------------
 // If you have a deployed server (Ngrok, Render, VPS), paste the URL here:
 // Example: const DEPLOYED_URL = 'https://my-app.onrender.com';
-const DEPLOYED_URL = '';
+const DEPLOYED_URL = 'https://chatapp-production-b7b5.up.railway.app'; // Add your ngrok/server URL here
 // ---------------------------------------------------------
 
 // Get the server URL based on the platform

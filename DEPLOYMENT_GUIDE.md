@@ -23,14 +23,45 @@ Best for temporary testing instantly.
     *   If using Expo Go, your friends can scan your QR code (if on same network) or use the published link if you publish to Expo.
     *   Ideally, build an APK: `eas build -p android --profile preview`.
 
-## Option 2: Permanent (Using Render.com)
-Best for a real server that stays online 24/7.
+## Option 2: Permanent (Free Alternatives)
 
+### A. Glitch (Good for Demos)
+1.  Go to [Glitch.com](https://glitch.com).
+2.  Click **New Project** -> **Import from GitHub**.
+3.  Paste your URL: `https://github.com/PoornaManohar/ChatApp`.
+4.  Open the `.env` file in Glitch.
+5.  Add your Variable: `MONGO_URI=mongodb+srv://...` (Copy from your local .env).
+6.  Click **Share** -> **Live Site** to get your URL.
+7.  Update `socketService.js` with this URL.
+
+### B. Render (If you have a slot)
 1.  Push your code to **GitHub**.
 2.  Sign up at [Render.com](https://render.com).
-3.  Create a new **Web Service**.
-4.  Connect your GitHub repo.
-5.  Set the **Root Directory** to `server`.
+...
+## Option 3: Railway (Most similar to Render)
+Railway is a popular alternative with a great developer experience.
+
+1.  Sign up at [Railway.app](https://railway.app).
+2.  Click **New Project** -> **Deploy from GitHub repo**.
+3.  Select your `ChatApp` repository.
+4.  Click **Add Variables** (Environment Variables).
+5.  Add `MONGO_URI` and paste your connection string.
+6.  Click **Deploy**.
+7.  Once deployed, go to **Settings** -> **Domains** to generate a public URL.
+8.  Update `socketService.js` with this URL.
+
+## Option 4: Koyeb (Generous Free Tier)
+Another excellent "push-to-deploy" platform.
+
+1.  Sign up at [Koyeb.com](https://koyeb.com).
+2.  Click **Create App** -> **GitHub**.
+3.  Select your repository.
+4.  In the **Builder** section, it should auto-detect Node.js.
+5.  Under **Environment Variables**, add `MONGO_URI`.
+6.  Click **Deploy**.
+7.  Copy the public URL from the dashboard.
+8.  Update `socketService.js`.
+
 6.  Set the **Build Command** to `npm install`.
 7.  Set the **Start Command** to `node index.js`.
 8.  Click **Deploy**.

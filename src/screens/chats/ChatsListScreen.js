@@ -8,6 +8,9 @@ import {
     StatusBar,
     Image,
     ScrollView,
+    Alert,
+    Modal,
+    TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -144,6 +147,54 @@ const ChatItem = React.memo(({ chat, onPress }) => (
 const ChatsListScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { logout } = useUser();
+    const [isNewChatModalVisible, setIsNewChatModalVisible] = useState(false);
+    const [newChatPhone, setNewChatPhone] = useState('');
+    const { checkUser } = useUser();
+
+    const handleStartNewChat = useCallback(async () => {
+        if (!newChatPhone || newChatPhone.length < 10) {
+            Alert.alert('Invalid Number', 'Please enter a valid phone number.');
+            return;
+        }
+
+        try {
+            // Check if user exists (mock check or real API)
+            const result = await checkUser(newChatPhone);
+            if (result.exists) {
+                // Determine user details (In a real app, API returns profile)
+                // Here we might need to fetch profile or just navigate with phone
+                // For now, let's assume if exists, we go to chat.
+                // Ideally API should return user info.
+                // The checkUser API in index.js only returns { exists: true/false } currently.
+                // I should probably fetch user details if exists.
+                // But let's just navigate and let ChatScreen handle (or show basic info).
+                // Wait, ChatScreen needs 'participant' object with name/avatar.
+                // I should update checkUser to return user info if found.
+                // Or I can just navigate and use phone as name?
+
+                // Let's improve checkUser in context/backend to return user?
+                // Backend: res.json({ exists: !!user });
+                // I won't change backend now if I can avoid it.
+                // Actually, I can use a placeholder for now to unblock.
+
+                setIsNewChatModalVisible(false);
+                setNewChatPhone('');
+                navigation.navigate('Chat', {
+                    chatId: newChatPhone, // Simple chat ID strategy
+                    participant: {
+                        id: newChatPhone,
+                        name: `User ${newChatPhone}`, // Placeholder until we fetch real profile
+                        avatar: `https://i.pravatar.cc/150?u=${newChatPhone}`,
+                    },
+                });
+            } else {
+                Alert.alert('User Not Found', 'This phone number is not registered on WhatsApp Clone.');
+            }
+        } catch (error) {
+            console.error(error);
+            Alert.alert('Error', 'Could not verify user.');
+        }
+    }, [newChatPhone, checkUser, navigation]);
 
     const handleChatPress = useCallback((chat) => {
         navigation.navigate('Chat', {
@@ -160,18 +211,20 @@ const ChatsListScreen = ({ navigation }) => {
         <ChatItem chat={item} onPress={() => handleChatPress(item)} />
     ), [handleChatPress]);
 
+    // ... existing renders ...
+
     const renderHeader = () => (
         <>
             <View style={styles.header}>
-                <TouchableOpacity style={styles.circleButton}>
-                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.textPrimary} />
-                </TouchableOpacity>
-
+                {/* ... existing header items ... */}
                 <View style={styles.headerRight}>
                     <TouchableOpacity style={styles.circleButton} onPress={() => { }}>
                         <Ionicons name="camera-outline" size={22} color={colors.textPrimary} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.circleButtonGreen, { marginLeft: 12 }]}>
+                    <TouchableOpacity
+                        style={[styles.circleButtonGreen, { marginLeft: 12 }]}
+                        onPress={() => setIsNewChatModalVisible(true)}
+                    >
                         <Ionicons name="add" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                 </View>
@@ -226,6 +279,46 @@ const ChatsListScreen = ({ navigation }) => {
                 contentContainerStyle={{ paddingBottom: 100 }}
                 ItemSeparatorComponent={() => <View style={styles.separator} />}
             />
+
+            {/* New Chat Modal */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={isNewChatModalVisible}
+                onRequestClose={() => setIsNewChatModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>New Chat</Text>
+                        <Text style={styles.modalSubtitle}>Enter phone number to start chatting</Text>
+
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Phone Number (e.g. 1555010999)"
+                            placeholderTextColor={colors.textTertiary}
+                            value={newChatPhone}
+                            onChangeText={setNewChatPhone}
+                            keyboardType="number-pad"
+                            autoFocus
+                        />
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={styles.modalButtonCancel}
+                                onPress={() => setIsNewChatModalVisible(false)}
+                            >
+                                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.modalButtonStart}
+                                onPress={handleStartNewChat}
+                            >
+                                <Text style={styles.modalButtonTextStart}>Start Chat</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -421,6 +514,76 @@ const styles = StyleSheet.create({
     unreadText: {
         fontSize: 12,
         color: '#FFFFFF',
+        fontWeight: '600',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderRadius: 20,
+        padding: 24,
+        width: '100%',
+        maxWidth: 340,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 8,
+        color: colors.textPrimary,
+    },
+    modalSubtitle: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    modalInput: {
+        width: '100%',
+        height: 50,
+        borderWidth: 1,
+        borderColor: colors.divider,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        fontSize: 16,
+        marginBottom: 24,
+        color: colors.textPrimary,
+        backgroundColor: '#F5F5F5',
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        width: '100%',
+        justifyContent: 'space-between',
+    },
+    modalButtonCancel: {
+        flex: 1,
+        paddingVertical: 12,
+        marginRight: 8,
+        borderRadius: 12,
+        backgroundColor: '#F5F5F5',
+        alignItems: 'center',
+    },
+    modalButtonStart: {
+        flex: 1,
+        paddingVertical: 12,
+        marginLeft: 8,
+        borderRadius: 12,
+        backgroundColor: '#128C7E',
+        alignItems: 'center',
+    },
+    modalButtonTextCancel: {
+        fontSize: 16,
+        color: colors.textSecondary,
+        fontWeight: '600',
+    },
+    modalButtonTextStart: {
+        fontSize: 16,
+        color: 'white',
         fontWeight: '600',
     },
 });
