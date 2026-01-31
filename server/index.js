@@ -125,8 +125,9 @@ io.on('connection', (socket) => {
   // Register user
   socket.on('register', ({ userId }) => {
     socket.userId = userId;
+    socket.join(userId); // Join a room specific to this user
     onlineUsers.set(socket.id, userId);
-    console.log(`👤 User registered: ${userId}`);
+    console.log(`👤 User registered and joined room: ${userId}`);
     io.emit('online-users', Array.from(onlineUsers.values()));
   });
 
@@ -164,11 +165,16 @@ io.on('connection', (socket) => {
       const savedMessage = await newMessage.save();
       console.log(`💬 Saved message: ${savedMessage.text} in ${chatId}`);
 
-      // Broadcast to room
+      // Broadcast to specific chat room (for open chat screens)
       io.to(chatId).emit('message', savedMessage);
 
-      // Broadcast globally (legacy/demo support)
-      io.emit('new-message', savedMessage);
+      // Identify Recipient to send notification/list update
+      const [userA, userB] = chatId.split('_');
+      const recipientId = userA === senderId ? userB : userA;
+
+      // Emit 'new-message' to both Sender (for list update) and Recipient
+      io.to(recipientId).emit('new-message', savedMessage);
+      io.to(senderId).emit('new-message', savedMessage);
 
       // Simulate delivery update
       setTimeout(async () => {

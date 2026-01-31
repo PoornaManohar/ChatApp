@@ -11,6 +11,7 @@ import {
     Alert,
     Modal,
     TextInput,
+    Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,71 +19,8 @@ import { colors, spacing } from '../../theme';
 import { useUser } from '../../context/UserContext';
 
 // Back to the Future Theme Data
-const CHATS_DATA = [
-    {
-        id: '1',
-        name: 'Jenny ❤️',
-        avatar: 'https://i.pravatar.cc/150?img=5',
-        lastMessage: 'You reacted 😆 to "That\'s good advice, Marty."',
-        time: '16:14',
-        unread: 0,
-        isPinned: true,
-        reaction: '😆',
-    },
-    {
-        id: '2',
-        name: 'Mom 💕',
-        avatar: 'https://i.pravatar.cc/150?img=9',
-        lastMessage: 'Mom is typing...',
-        time: '19:45',
-        unread: 1,
-        isTyping: true,
-        mention: true,
-    },
-    {
-        id: '3',
-        name: 'Daddy',
-        avatar: 'https://i.pravatar.cc/150?img=11',
-        lastMessage: 'I mean he wrecked it! 😭',
-        time: '19:42',
-        unread: 0,
-        isSent: true,
-        isRead: true,
-    },
-    {
-        id: '4',
-        name: 'Biff Tannen',
-        avatar: 'https://i.pravatar.cc/150?img=3',
-        lastMessage: 'Say hi to your mom for me.',
-        time: '18:23',
-        unread: 0,
-    },
-    {
-        id: '5',
-        name: 'Clocktower Lady',
-        avatar: 'https://i.pravatar.cc/150?img=1',
-        lastMessage: 'Save the clock tower?',
-        time: '16:15',
-        unread: 0,
-    },
-    {
-        id: '6',
-        name: 'Mr. Strickland',
-        avatar: 'https://i.pravatar.cc/150?img=13',
-        lastMessage: '🚫 You deleted this message.',
-        time: '08:57',
-        unread: 0,
-    },
-    {
-        id: '7',
-        name: 'Emmett "Doc" Brown',
-        avatar: 'https://i.pravatar.cc/150?img=8',
-        lastMessage: 'Location',
-        time: 'Yesterday',
-        unread: 1,
-        isLocation: true,
-    },
-];
+// Empty initial data, we use recentChats from context
+const CHATS_DATA = [];
 
 const FILTER_TABS = ['All', 'Unread', 'Favourites', 'Groups'];
 
@@ -146,55 +84,71 @@ const ChatItem = React.memo(({ chat, onPress }) => (
 
 const ChatsListScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
-    const { logout } = useUser();
+    const { logout, checkUser, recentChats, addToRecentChats, currentUser } = useUser();
     const [isNewChatModalVisible, setIsNewChatModalVisible] = useState(false);
     const [newChatPhone, setNewChatPhone] = useState('');
-    const { checkUser } = useUser();
 
     const handleStartNewChat = useCallback(async () => {
-        if (!newChatPhone || newChatPhone.length < 10) {
-            Alert.alert('Invalid Number', 'Please enter a valid phone number.');
+        console.log('🔘 Start Chat Button Pressed. Phone:', newChatPhone);
+
+        if (!newChatPhone || newChatPhone.length < 5) { // Reduced length check for testing
+            console.log('❌ Invalid number length');
+            Alert.alert('Invalid Number', 'Please enter a valid phone number (at least 5 digits).');
             return;
         }
 
+        if (newChatPhone === currentUser?.phone) {
+            Alert.alert('Invalid', 'You cannot chat with yourself.');
+            return;
+        }
+
+        // Auto-prepend +91 if user enters 10 digits without code
+        let phoneToCheck = newChatPhone.trim().replace(/\s/g, ''); // Remove spaces
+
+        // If it's a 10 digit number (e.g. 9999999999), add +91
+        if (!phoneToCheck.startsWith('+') && phoneToCheck.length === 10 && /^\d+$/.test(phoneToCheck)) {
+            phoneToCheck = '+91' + phoneToCheck;
+        }
+
+        console.log('🔎 Checking Phone:', phoneToCheck);
+
         try {
-            // Check if user exists (mock check or real API)
-            const result = await checkUser(newChatPhone);
+            const result = await checkUser(phoneToCheck);
             if (result.exists) {
-                // Determine user details (In a real app, API returns profile)
-                // Here we might need to fetch profile or just navigate with phone
-                // For now, let's assume if exists, we go to chat.
-                // Ideally API should return user info.
-                // The checkUser API in index.js only returns { exists: true/false } currently.
-                // I should probably fetch user details if exists.
-                // But let's just navigate and let ChatScreen handle (or show basic info).
-                // Wait, ChatScreen needs 'participant' object with name/avatar.
-                // I should update checkUser to return user info if found.
-                // Or I can just navigate and use phone as name?
+                // Canonical Chat ID: Sort phones to ensure A-B and B-A match
+                const chatId = [currentUser.phone, phoneToCheck].sort().join('_');
 
-                // Let's improve checkUser in context/backend to return user?
-                // Backend: res.json({ exists: !!user });
-                // I won't change backend now if I can avoid it.
-                // Actually, I can use a placeholder for now to unblock.
+                const newChatUser = {
+                    id: chatId, // We use chatId as the list item ID for uniqueness in list
+                    chatId: chatId,
+                    otherUserId: phoneToCheck, // Store the other person's ID
+                    name: `User ${phoneToCheck}`,
+                    avatar: `https://i.pravatar.cc/150?u=${phoneToCheck}`,
+                    lastMessage: 'Start a conversation',
+                    time: 'Now',
+                    unread: 0,
+                };
 
+                await addToRecentChats(newChatUser);
                 setIsNewChatModalVisible(false);
                 setNewChatPhone('');
+
                 navigation.navigate('Chat', {
-                    chatId: newChatPhone, // Simple chat ID strategy
+                    chatId: chatId,
                     participant: {
-                        id: newChatPhone,
-                        name: `User ${newChatPhone}`, // Placeholder until we fetch real profile
-                        avatar: `https://i.pravatar.cc/150?u=${newChatPhone}`,
+                        id: phoneToCheck,
+                        name: `User ${phoneToCheck}`,
+                        avatar: `https://i.pravatar.cc/150?u=${phoneToCheck}`,
                     },
                 });
             } else {
-                Alert.alert('User Not Found', 'This phone number is not registered on WhatsApp Clone.');
+                Alert.alert('User Not Found', 'This phone number is not registered.');
             }
         } catch (error) {
             console.error(error);
-            Alert.alert('Error', 'Could not verify user.');
+            Alert.alert('Error', 'Could not verify user: ' + (error.message || error));
         }
-    }, [newChatPhone, checkUser, navigation]);
+    }, [newChatPhone, checkUser, navigation, currentUser, addToRecentChats]);
 
     const handleChatPress = useCallback((chat) => {
         navigation.navigate('Chat', {
@@ -271,7 +225,7 @@ const ChatsListScreen = ({ navigation }) => {
             <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
             <FlatList
-                data={CHATS_DATA}
+                data={recentChats}
                 renderItem={renderChat}
                 keyExtractor={item => item.id}
                 ListHeaderComponent={renderHeader}
@@ -303,18 +257,24 @@ const ChatsListScreen = ({ navigation }) => {
                         />
 
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity
-                                style={styles.modalButtonCancel}
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.modalButtonCancel,
+                                    { opacity: pressed ? 0.7 : 1 }
+                                ]}
                                 onPress={() => setIsNewChatModalVisible(false)}
                             >
                                 <Text style={styles.modalButtonTextCancel}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.modalButtonStart}
+                            </Pressable>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.modalButtonStart,
+                                    { opacity: pressed ? 0.7 : 1 }
+                                ]}
                                 onPress={handleStartNewChat}
                             >
                                 <Text style={styles.modalButtonTextStart}>Start Chat</Text>
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
                     </View>
                 </View>
